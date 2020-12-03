@@ -201,7 +201,7 @@ class Trader (object):
             if position['size'] != quantity:
                 self.logger.info("Amending stop as limit was filled")
                 quantity = position['size']
-                self.bybit.Conditional.Conditional_replace(symbol=symbol, stop_order_id=stop['stop_order_id'],p_r_qty=quantity).result()
+                self.bybit.Conditional.Conditional_replace(symbol=symbol, stop_order_id=stop['stop_order_id'],p_r_qty=str(quantity)).result()
             position = self.bybit.Positions.Positions_myPosition(symbol=symbol).result()[0]['result']
             sleep(1)
         self.logger.info("Trade has finished")
