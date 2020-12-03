@@ -118,12 +118,15 @@ class Trader (object):
         else:
             side = 'Buy'
             side_scelar = 1
-        amount = position['size']
+        amount = str(position['size'])
         if '%' in stop_px:
             stop_px = base_price + side_scelar * float(stop_px.replace('%',''))*base_price/100
         elif '$' in stop_px:
             stop_px = base_price + side_scelar * int(stop_px.replace('$',''))/amount * base_price
         stop_px = int(stop_px)
+        stop_px = str(stop_px)
+        amount = str(amount)
+        base_price = str(base_price)
         s = self.bybit.Conditional.Conditional_new(order_type="Market",side=side,symbol=symbol,qty=amount,stop_px=stop_px,base_price=base_price,time_in_force="GoodTillCancel").result()
         self.logger.info("Sending a Create Stop command side =>{} stop =>{}".format(side, stop_px))
         print(s)
@@ -199,7 +202,7 @@ class Trader (object):
             if position['size'] != quantity:
                 self.logger.info("Amending stop as limit was filled")
                 quantity = position['size']
-                self.bybit.Conditional.Conditional_replace(symbol=symbol, order_id=stop['stop_order_id'],p_r_qty=quantity).result()
+                self.bybit.Conditional.Conditional_replace(symbol=symbol, stop_order_id=stop['stop_order_id'],p_r_qty=quantity).result()
             position = self.bybit.Positions.Positions_myPosition(symbol=symbol).result()[0]['result']
             sleep(1)
         self.logger.info("Trade has finished")
