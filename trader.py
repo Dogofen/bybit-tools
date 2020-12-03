@@ -106,7 +106,7 @@ class Trader (object):
         else:
             limit_price = price
         self.logger.info("limit {} proccess begin.".format(side))
-        print(self.create_order('Limit', symbol, side, amount, limit_price))
+        self.create_order('Limit', symbol, side, amount, limit_price)
 
 
     def create_stop(self, symbol, stop_px):
@@ -129,7 +129,6 @@ class Trader (object):
         base_price = str(base_price)
         s = self.bybit.Conditional.Conditional_new(order_type="Market",side=side,symbol=symbol,qty=amount,stop_px=stop_px,base_price=base_price,time_in_force="GoodTillCancel").result()
         self.logger.info("Sending a Create Stop command side =>{} stop =>{}".format(side, stop_px))
-        print(s)
         return s[0]['result']
 
 
