@@ -22,6 +22,7 @@ class Trader (object):
     price = ''
     side = ''
     last_big_deal = ''
+    rate_limit_status = ''
 
     def __init__(self):
         config = configparser.ConfigParser()
@@ -51,13 +52,25 @@ class Trader (object):
         self.logger.info(self.bybit.Order.Order_replace(symbol=symbol, order_id=order_id, p_r_price=price).result())
 
     def create_order(self, order_type, symbol, side, amount, price):
-        self.logger.info("Sending a Create Order command side =>{} amount=>{} price=>{}".format(side, amount, price))
+        self.logger.info("Sending a Create Order command type => {} side =>{} amount=>{} price=>{}".format(order_type, side, amount, price))
         try:
             order = self.bybit.Order.Order_new(side=side,symbol=symbol,order_type=order_type,qty=amount,price=price,time_in_force="GoodTillCancel").result()[0]['result']
         except Exception as e:
             self.logger.error("Create Trade Failed {}".format(e))
             quit()
         return order
+
+    def true_get_position(self, symbol):
+        position = False
+        fault_counter = 0
+        while position == False:
+            if fault_counter > 5:
+                self.logger.error("position Failed to retrieved fault counter has {} tries".format(fault_counter))
+            position = self.bybit.Positions.Positions_myPosition(symbol=symbol).result()[0]
+            fault_counter += 1
+            sleep(1)
+        self.rate_limit_status = position['rate_limit_status']
+        return position['result']
 
     def get_open_position(self, symbol):
         return self.bybit.Positions.Positions_myPosition(symbol=symbol).result()[0]['result']
@@ -83,9 +96,7 @@ class Trader (object):
                 return order['price']
 
     def limit_open_or_close_position(self, symbol, side, amount):
-        self.logger.info('---------------------------------- New Order ----------------------------------')
         limit_price = self.get_limit_price(side)
-        self.logger.info("limit {} proccess begin.".format(side))
         order = self.create_order('Limit', symbol, side, amount, limit_price)
         sleep(1)
         if self.get_open_order_by_id(order['order_id'])['order_status'] == 'Filled':
@@ -105,12 +116,11 @@ class Trader (object):
             limit_price = self.get_limit_price(symbol, side)
         else:
             limit_price = price
-        self.logger.info("limit {} proccess begin.".format(side))
         self.create_order('Limit', symbol, side, amount, limit_price)
 
 
     def create_stop(self, symbol, stop_px):
-        position = self.bybit.Positions.Positions_myPosition(symbol=symbol).result()[0]['result']
+        position = self.true_get_position(symbol)
         base_price = int(float(position['entry_price']))
         if position['side'] == 'Buy':
             side = 'Sell'
@@ -168,10 +178,10 @@ class Trader (object):
             sleep(2)
 
     def wait_for_limit_order_fill(self, symbol):
-        position = self.bybit.Positions.Positions_myPosition(symbol=symbol).result()[0]['result']
+        position = self.true_get_position(symbol)
         counter = 0
-        while position['side'] == 'None' and counter < 65:
-            position = self.bybit.Positions.Positions_myPosition(symbol=symbol).result()[0]['result']
+        while position['side'] == 'None' and counter < 605:
+            position = self.true_get_position(symbol)
             counter += 1
             sleep(1)
         if counter > 60:
@@ -181,8 +191,8 @@ class Trader (object):
         else:
             return True
 
-
     def trade(self, symbol, quantity, side, targets, stop_px):
+        self.logger.info('---------------------------------- New Trade ----------------------------------')
         self.limit_order(symbol, side, quantity)
         succes = self.wait_for_limit_order_fill(symbol)
         if not succes:
@@ -196,13 +206,16 @@ class Trader (object):
         for t in targets:
             self.limit_order(symbol, opposite_side, quantity/3, t)
 
-        position = self.bybit.Positions.Positions_myPosition(symbol=symbol).result()[0]['result']
+        position = self.true_get_position(symbol)
         while position['side'] != 'None':
             if position['size'] != quantity:
                 self.logger.info("Amending stop as limit was filled")
                 quantity = position['size']
                 self.bybit.Conditional.Conditional_replace(symbol=symbol, stop_order_id=stop['stop_order_id'],p_r_qty=str(quantity)).result()
-            position = self.bybit.Positions.Positions_myPosition(symbol=symbol).result()[0]['result']
+            position = self.true_get_position(symbol)
+            if self.rate_limit_status < 20:
+                print('rate limit status is dangerously low {}'.format(self.rate_limit_status))
+                self.logger.warning('rate limit status is dangerously low {}'.format(self.rate_limit_status))
             sleep(1)
         self.logger.info("Trade has finished")
         try:
