@@ -67,9 +67,16 @@ class Trader (object):
             if fault_counter > 5:
                 self.logger.error("position Failed to retrieved fault counter has {} tries".format(fault_counter))
             position = self.bybit.Positions.Positions_myPosition(symbol=symbol).result()[0]
+            try:
+                self.rate_limit_status = position['rate_limit_status']
+            except Exception as e:
+                self.logger.error("get position returned: {} error was: {}".format(position, e))
+                self.logger.info("self rate limit: {}".format(self.rate_limit_status))
+                position = False
+                sleep(2)
+
             fault_counter += 1
             sleep(1)
-        self.rate_limit_status = position['rate_limit_status']
         return position['result']
 
     def get_open_position(self, symbol):
