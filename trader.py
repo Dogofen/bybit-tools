@@ -218,7 +218,8 @@ class Trader (object):
             if position['size'] != quantity:
                 self.logger.info("Amending stop as limit was filled")
                 quantity = position['size']
-                self.bybit.Conditional.Conditional_replace(symbol=symbol, stop_order_id=stop['stop_order_id'],p_r_qty=str(quantity)).result()
+                price = int(float(position['entry_price']))
+                self.bybit.Conditional.Conditional_replace(symbol=symbol, stop_order_id=stop['stop_order_id'],p_r_qty=str(quantity), p_r_trigger_price=str(price)).result()
             position = self.true_get_position(symbol)
             if self.rate_limit_status < 20:
                 print('rate limit status is dangerously low {}'.format(self.rate_limit_status))
