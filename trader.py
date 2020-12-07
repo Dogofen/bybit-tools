@@ -188,20 +188,21 @@ class Trader (object):
     def wait_for_limit_order_fill(self, symbol):
         position = self.true_get_position(symbol)
         counter = 0
-        while position['side'] == 'None' and counter < 360:
+        while position['side'] == 'None' and counter < 720:
             position = self.true_get_position(symbol)
             counter += 1
             sleep(1)
-        if counter >= 360:
+        if counter >= 720:
             self.logger.info("order did not met time constraints")
-            self.bybit.Order.Order_cancelAll(symbol=symbol).result()
+            self.logger.info("Canceling Limit Orders")
+            self.logger.info(self.bybit.Order.Order_cancelAll(symbol=symbol).result())
             return False
         else:
             return True
 
-    def trade(self, symbol, quantity, side, targets, stop_px):
+    def trade(self, symbol, quantity, side, targets, stop_px, price=False):
         self.logger.info('---------------------------------- New Trade ----------------------------------')
-        self.limit_order(symbol, side, quantity)
+        self.limit_order(symbol, side, quantity, price)
         succes = self.wait_for_limit_order_fill(symbol)
         if not succes:
             return False
