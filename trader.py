@@ -146,6 +146,7 @@ class Trader (object):
         base_price = str(base_price)
         s = self.bybit.Conditional.Conditional_new(order_type="Market",side=side,symbol=symbol,qty=amount,stop_px=stop_px,base_price=base_price,time_in_force="GoodTillCancel").result()
         self.logger.info("Sending a Create Stop command side =>{} stop =>{}".format(side, stop_px))
+        self.logger.info("Command's result: {}".format(s[0]['result']))
         return s[0]['result']
 
 
@@ -187,11 +188,11 @@ class Trader (object):
     def wait_for_limit_order_fill(self, symbol):
         position = self.true_get_position(symbol)
         counter = 0
-        while position['side'] == 'None' and counter < 605:
+        while position['side'] == 'None' and counter < 360:
             position = self.true_get_position(symbol)
             counter += 1
             sleep(1)
-        if counter > 60:
+        if counter >= 360:
             self.logger.info("order did not met time constraints")
             self.bybit.Order.Order_cancelAll(symbol=symbol).result()
             return False
@@ -227,12 +228,14 @@ class Trader (object):
             sleep(1)
         self.logger.info("Trade has finished")
         try:
-            self.bybit.Conditional.Conditional_cancelAll(symbol=symbol).result()
+            self.logger.info("Canceling stop order")
+            self.logger.info(self.bybit.Conditional.Conditional_cancelAll(symbol=symbol).result())
         except Exception as e:
             self.logger.error("cncelling stop order failed")
             self.logger.error(e)
         try:
-            self.bybit.Order.Order_cancelAll(symbol=symbol).result()
+            self.logger.info("Canceling Limit Orders")
+            self.logger.info(self.bybit.Order.Order_cancelAll(symbol=symbol).result())
         except Exception as e:
             self.logger.error("cancelling limit orders failed")
             self.logger.error(e)
