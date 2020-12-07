@@ -23,6 +23,7 @@ class Trader (object):
     side = ''
     last_big_deal = ''
     rate_limit_status = ''
+    fill_thresh_hold = ''
 
     def __init__(self):
         config = configparser.ConfigParser()
@@ -30,6 +31,7 @@ class Trader (object):
         self.API_KEY = config['API_KEYS']['api_key']
         self.API_SECRET = config['API_KEYS']['api_secret']
         self.leverage = config['OTHER']['leverage']
+        self.fill_thresh_hold = int(config['OTHER']['fill_thresh_hold'])
         self.env = config['OTHER']['env']
         botLogger = Logger()
         self.logger = botLogger.init_logger()
@@ -187,17 +189,20 @@ class Trader (object):
 
     def wait_for_limit_order_fill(self, symbol):
         position = self.true_get_position(symbol)
+        now = datetime.datetime.now()
         counter = 0
-        while position['side'] == 'None' and counter < 720:
+        while position['side'] == 'None' and counter < self.fill_thresh_hold:
             position = self.true_get_position(symbol)
-            counter += 1
             sleep(1)
-        if counter >= 720:
+            time_delta = datetime.datetime.now() - now
+            counter = time_delta.seconds
+        if counter >= self.fill_thresh_hold:
             self.logger.info("order did not met time constraints")
             self.logger.info("Canceling Limit Orders")
             self.logger.info(self.bybit.Order.Order_cancelAll(symbol=symbol).result())
             return False
         else:
+            self.logger.info("Order accepted, Fill Time: {}".format(counter))
             return True
 
     def trade(self, symbol, quantity, side, targets, stop_px, price=False):
