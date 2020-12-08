@@ -206,6 +206,7 @@ class Trader (object):
             return True
 
     def trade(self, symbol, quantity, side, targets, stop_px, price=False):
+        amends = 0
         self.logger.info('---------------------------------- New Trade ----------------------------------')
         self.limit_order(symbol, side, quantity, price)
         succes = self.wait_for_limit_order_fill(symbol)
@@ -221,12 +222,14 @@ class Trader (object):
             self.limit_order(symbol, opposite_side, quantity/3, t)
 
         position = self.true_get_position(symbol)
+        stop_price = [int(float(position['entry_price'])), targets[0], targets[0]]
         while position['side'] != 'None':
             if position['size'] != quantity:
-                self.logger.info("Amending stop as limit was filled")
                 quantity = position['size']
-                price = int(float(position['entry_price']))
+                price = stop_price[amends]
+                self.logger.info("Amending stop as limit was filled, price:{} quantity:{}".format(price, quantity))
                 self.bybit.Conditional.Conditional_replace(symbol=symbol, stop_order_id=stop['stop_order_id'],p_r_qty=str(quantity), p_r_trigger_price=str(price)).result()
+                amends += 1
             position = self.true_get_position(symbol)
             if self.rate_limit_status < 20:
                 print('rate limit status is dangerously low {}'.format(self.rate_limit_status))
