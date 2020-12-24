@@ -99,21 +99,34 @@ class BybitOperations(object):
         return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     def get_kline(self, symbol, interval, _from):
-        try:
-            kline = self.bybit.Kline.Kline_get(
-                symbol=symbol, interval=interval, **{'from': _from}
-            ).result()[0]['result']
-        except Exception as e:
-            self.logger.error("Failed getting Kline {}".format(e))
-            return
+        kline = False
+        fault_counter = 0
+        while not kline:
+            if fault_counter > 5:
+                self.logger.error("Kline Failed to retrieved fault counter has {} tries".format(fault_counter))
+            try:
+                kline = self.bybit.Kline.Kline_get(
+                    symbol=symbol, interval=interval, **{'from': _from}
+                ).result()[0]['result']
+
+            except Exception as e:
+                self.logger.error("get Kline returned: {} error was: {}".format(kline, e))
+                kline = False
+                sleep(2)
+
+            fault_counter += 1
+            sleep(1)
         return kline
 
     def get_last_price_close(self, symbol):
-        kline = self.get_kline(
-            symbol,
-            self.interval,
-            (datetime.datetime.now()-datetime.timedelta(minutes=int(self.interval))).timestamp()
-        )
+        try:
+            kline = self.get_kline(
+                symbol,
+                self.interval,
+                (datetime.datetime.now() - datetime.timedelta(minutes=int(self.interval))).timestamp()
+            )
+        except Exception as e:
+            self.logger.error("get Kline returned: {} error was: {}".format(kline, e))
         return int(float(kline[0]['close']))
 
     def cancel_all_orders(self, symbol):

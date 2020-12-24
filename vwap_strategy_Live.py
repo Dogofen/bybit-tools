@@ -38,6 +38,7 @@ class VwapStrategy(BybitTools):
 
     def next(self):
         symbol = "BTCUSD"
+        last_vwap = self.get_vwap(symbol)
         while True:
             if datetime.datetime.now().second % 10 != 0:
                 sleep(1)
@@ -75,7 +76,9 @@ class VwapStrategy(BybitTools):
                     self.initiate_trade(symbol, self.amount, side, self.targets, self.stop_px+'%')
 
             if not self.in_a_trade and len(self.orders) == 1:  # Editing Order every tick to fit vwap
-                self.edit_orders_price(symbol, self.orders[0], vwap)
+                if last_vwap != vwap:
+                    last_vwap = vwap
+                    self.edit_orders_price(symbol, self.orders[0], vwap)
 
             if not self.in_a_trade and len(self.orders) == 0 and not self.wait:  # Send First Limit order
                 if last_price > vwap:
