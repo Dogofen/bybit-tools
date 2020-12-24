@@ -39,7 +39,7 @@ class VwapStrategy(BybitTools):
     def next(self):
         symbol = "BTCUSD"
         while True:
-            if datetime.datetime.now().second != 0:
+            if datetime.datetime.now().second % 10 != 0:
                 sleep(1)
                 continue
             vwap = self.get_vwap(symbol)
