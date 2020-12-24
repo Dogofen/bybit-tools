@@ -47,7 +47,7 @@ class BybitOperations(object):
     def edit_orders_price(self, symbol, order_id, price):
         order_id = order_id['order_id']
         self.logger.info("editing order:{} price:{}.".format(order_id, price))
-        self.logger.info(self.bybit.Order.Order_replace(symbol=symbol, order_id=order_id, p_r_price=price).result())
+        self.logger.info(self.bybit.Order.Order_replace(symbol=symbol, order_id=order_id, p_r_price=str(price)).result())
 
     def get_month(self):
         return datetime.datetime.now().strftime('%m')
