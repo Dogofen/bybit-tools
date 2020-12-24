@@ -73,7 +73,7 @@ class BybitOperations(object):
             self.bybit.Conditional.Conditional_replace(
                 symbol=symbol,
                 stop_order_id=stop_id,
-                p_r_qty=p_r_qty,
+                p_r_qty=str(p_r_qty),
                 p_r_trigger_price=str(p_r_trigger_price)
             ).result()
         except Exception as e:
