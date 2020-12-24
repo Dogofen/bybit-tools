@@ -70,7 +70,12 @@ class BybitOperations(object):
     def edit_stop(self, symbol, stop_id, p_r_qty, p_r_trigger_price):
         stop_id = stop_id['stop_order_id']
         try:
-            self.bybit.Conditional.Conditional_replace(symbol=symbol, stop_order_id=stop_id, p_r_qty=p_r_qty, p_r_trigger_price=p_r_trigger_price).result()
+            self.bybit.Conditional.Conditional_replace(
+                symbol=symbol,
+                stop_order_id=stop_id,
+                p_r_qty=p_r_qty,
+                p_r_trigger_price=str(p_r_trigger_price)
+            ).result()
         except Exception as e:
             self.logger.error("edit stop order Failed {}".format(e))
 
