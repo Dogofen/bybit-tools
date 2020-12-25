@@ -40,7 +40,7 @@ class BybitTools(BybitOperations):
         for k in kline:
             volume_close_array.append((float(k["close"])+float(k["high"])+float(k["low"]))/3*float(k["volume"]))
             volume_array.append(float(k["volume"]))
-        return int(sum(volume_close_array) / sum(volume_array))
+        return int(sum(volume_close_array) / sum(volume_array)) + 2
 
     def wait_for_limit_order_fill(self, symbol, fill_thresh_hold):
         position = self.true_get_position(symbol)
@@ -61,11 +61,9 @@ class BybitTools(BybitOperations):
             return True
 
     def initiate_trade(self, symbol, quantity, side, targets, stop_px):
-        print('---------------------------------- New Trade ----------------------------------')
-        print(self.get_date())
+        self.logger.info('---------------------------------- New Trade ----------------------------------')
         position = self.true_get_position(symbol)
         position_price = self.get_position_price(position)
-        print(position_price)
         quantity = int(quantity)
         self.orders.append(self.create_stop(symbol, stop_px))
         if side == 'Buy':
@@ -96,6 +94,4 @@ class BybitTools(BybitOperations):
             quantity = abs(position_size)
             self.logger.info("Amending stop as limit was filled, price:{} quantity:{}".format(stop_price, quantity))
             self.edit_stop(symbol, stop, quantity, stop_price)
-            print(self.get_date())
-            print(self.true_get_position(symbol))
         return quantity

@@ -34,7 +34,7 @@ class VwapStrategy(BybitTools):
         super(VwapStrategy, self).__init__()
         bot_logger = Logger()
         self.logger = bot_logger.init_logger()
-        self.logger.info('Applying Big Deal Strategy')
+        self.logger.info('Applying Vwap Strategy')
 
     def next(self):
         symbol = "BTCUSD"
@@ -48,6 +48,12 @@ class VwapStrategy(BybitTools):
             position = self.true_get_position(symbol)
             position_size = self.get_position_size(position)
 
+            # waiting when day passed if no trade
+            if datetime.datetime.now().strftime('%H:%M:%S') == self.get_time_open() and not self.in_a_trade:
+                self.wait = True
+                self.cancel_all_orders(symbol)
+                self.orders = []
+
             if position_size == 0 and self.in_a_trade:  # Finish Operations
                 print("Trade was finished, win: {} cancelling Orders".format(self.win))
                 self.logger.info("Trade was finished, win: {} cancelling Orders".format(
@@ -57,6 +63,7 @@ class VwapStrategy(BybitTools):
                 if not self.win:
                     self.wait = True
                 self.cancel_all_orders(symbol)
+                self.orders = []
                 self.in_a_trade = False
                 self.amount = self.config["OTHER"]["Amount"]
                 self.win = False

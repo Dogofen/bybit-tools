@@ -47,7 +47,7 @@ class BybitOperations(object):
     def edit_orders_price(self, symbol, order_id, price):
         order_id = order_id['order_id']
         self.logger.info("editing order:{} price:{}.".format(order_id, price))
-        self.logger.info(self.bybit.Order.Order_replace(symbol=symbol, order_id=order_id, p_r_price=str(price)).result())
+        self.bybit.Order.Order_replace(symbol=symbol, order_id=order_id, p_r_price=str(price)).result()
 
     def get_month(self):
         return datetime.datetime.now().strftime('%m')
@@ -55,10 +55,13 @@ class BybitOperations(object):
     def get_day_open(self):
         date_now = datetime.datetime.now()
         date_from = datetime.datetime.strptime(date_now.strftime('%Y-%m-%d ' '%H:00:00'), '%Y-%m-%d ' '%H:%M:%S')
-        day_open = self.day_open_dict[self.get_month()]
+        day_open = self.get_time_open()
         while date_from.strftime('%H:%M:%S') != day_open:
             date_from = date_from - datetime.timedelta(hours=1)
         return date_from.timestamp()
+
+    def get_time_open(self):
+        return self.day_open_dict[self.get_month()]
 
     def get_big_deal(self, symbol):
         try:
@@ -140,6 +143,7 @@ class BybitOperations(object):
         except Exception as e:
             self.logger.error("Failed cancelling Orders {}".format(e))
             return
+        self.logger.info("All Orders been cancelled")
         return True
 
     def true_get_position(self, symbol):
