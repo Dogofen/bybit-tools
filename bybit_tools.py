@@ -85,7 +85,7 @@ class BybitTools(BybitOperations):
         if abs(position_size) != quantity:
             self.win = True
             if abs(position_size) == int(self.config['OTHER']['Amount'])/3:
-                last_price = self.datas[0].close[0]
+                last_price = self.get_last_price_close(symbol)
                 if position_size > 0:
                     stop_price = last_price - self.targets[0] * last_price
                 else:
