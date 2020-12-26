@@ -18,7 +18,6 @@ class BybitTools(BybitOperations):
         super(BybitTools, self).__init__()
         self.config = configparser.ConfigParser()
         self.config.read('conf.ini')
-        self.interval = self.config["Vwap"]["Interval"]
 
         bot_logger = Logger()
         self.logger = bot_logger.init_logger()

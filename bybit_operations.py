@@ -11,7 +11,7 @@ class BybitOperations(object):
     API_SECRET = ''
 
     logger = ''
-    bybit  = ''
+    bybit = ''
     env = ''
     day_open_dict = {
         '01': "02:00:00",
@@ -29,17 +29,18 @@ class BybitOperations(object):
     }
 
     def __init__(self):
-        config = configparser.ConfigParser()
-        config.read('conf.ini')
-        self.API_KEY = config['API_KEYS']['api_key']
-        self.API_SECRET = config['API_KEYS']['api_secret']
-        self.env = config['OTHER']['env']
+        self.config = configparser.ConfigParser()
+        self.config.read('conf.ini')
+        self.API_KEY = self.config['API_KEYS']['api_key']
+        self.API_SECRET = self.config['API_KEYS']['api_secret']
+        self.interval = self.config["Vwap"]["Interval"]
+        self.env = self.config['OTHER']['env']
         bot_logger = Logger()
         self.logger = bot_logger.init_logger()
 
         if self.env == 'test':
             test = True
-        elif self.env == 'prod':
+        else:
             test = False
         self.bybit = bybit.bybit(test=test, api_key=self.API_KEY, api_secret=self.API_SECRET)
         self.logger.info("Finished BybitTools construction, proceeding")
@@ -64,15 +65,16 @@ class BybitOperations(object):
         return self.day_open_dict[self.get_month()]
 
     def get_big_deal(self, symbol):
+        bd = False
         try:
             bd = self.bybit.Market.Market_bigDeal(symbol=symbol).result()[0]['result'][0]
         except Exception as e:
-            self.logger.error("edit stop order Failed {}".format(e))
+            self.logger.error("Getting big deal Failed {}".format(e))
         return bd
 
     def edit_stop(self, symbol, stop_id, p_r_qty, p_r_trigger_price):
-        stop_id = stop_id['stop_order_id']
         try:
+            stop_id = stop_id['stop_order_id']
             self.bybit.Conditional.Conditional_replace(
                 symbol=symbol,
                 stop_order_id=stop_id,
@@ -83,7 +85,14 @@ class BybitOperations(object):
             self.logger.error("edit stop order Failed {}".format(e))
 
     def create_order(self, order_type, symbol, side, amount, price):
-        self.logger.info("Sending a Create Order command type => {} side =>{} amount=>{} price=>{}".format(order_type, side, amount, price))
+        order = False
+        self.logger.info(
+            "Sending a Create Order command type => {} side =>{} amount=>{} price=>{}".format(
+                order_type,
+                side,
+                amount,
+                price)
+        )
         try:
             order = self.bybit.Order.Order_new(
                 side=side,
@@ -122,6 +131,7 @@ class BybitOperations(object):
         return kline
 
     def get_last_price_close(self, symbol):
+        kline = False
         try:
             kline = self.get_kline(
                 symbol,
@@ -148,16 +158,17 @@ class BybitOperations(object):
 
     def true_get_position(self, symbol):
         position = False
+        rate_limit_status = False
         fault_counter = 0
-        while position == False:
+        while position is False:
             if fault_counter > 5:
                 self.logger.error("position Failed to retrieved fault counter has {} tries".format(fault_counter))
             position = self.bybit.Positions.Positions_myPosition(symbol=symbol).result()[0]
             try:
-                self.rate_limit_status = position['rate_limit_status']
+                rate_limit_status = position['rate_limit_status']
             except Exception as e:
                 self.logger.error("get position returned: {} error was: {}".format(position, e))
-                self.logger.info("self rate limit: {}".format(self.rate_limit_status))
+                self.logger.info("self rate limit: {}".format(rate_limit_status))
                 position = False
                 sleep(2)
 
@@ -171,17 +182,21 @@ class BybitOperations(object):
     def get_position_price(self, position):
         return float(position['entry_price'])
 
-    def is_open_position(self):
-        open_position = self.true_get_position();
-        if(open_position['size'] == 0):
+    def is_open_position(self, symbol):
+        open_position = self.true_get_position(symbol)
+        if open_position['size'] == 0:
             return False
         return open_position
 
     def get_order_book(self, symbol):
         return self.bybit.Market.Market_orderbook(symbol=symbol).result()[0]['result']
 
+    def get_limit_price(self, symbol, side):
+        ob = self.get_order_book(symbol)
+        return ob[side][0]
+
     def limit_order(self, symbol, side, amount, price=False):
-        if price == False:
+        if price is False:
             limit_price = self.get_limit_price(symbol, side)
         else:
             limit_price = price
@@ -196,33 +211,31 @@ class BybitOperations(object):
         else:
             side = 'Buy'
             side_scelar = 1
-        amount = str(position['size'])
+        amount = int(position['size'])
         if '%' in stop_px:
-            stop_px = base_price + side_scelar * float(stop_px.replace('%',''))*base_price/100
+            stop_px = base_price + side_scelar * float(stop_px.replace('%', ''))*base_price/100
         elif '$' in stop_px:
-            stop_px = base_price + side_scelar * int(stop_px.replace('$',''))/amount * base_price
+            stop_px = base_price + side_scelar * int(stop_px.replace('$', ''))/amount * base_price
         stop_px = int(stop_px)
         stop_px = str(stop_px)
         amount = str(amount)
         base_price = str(base_price)
-        s = self.bybit.Conditional.Conditional_new(
-            order_type="Market",
-            side=side,
-            symbol=symbol,
-            qty=amount,
-            stop_px=stop_px,
-            base_price=base_price,
-            time_in_force="GoodTillCancel"
-        ).result()
+        stop = None
+        while stop is None:
+            try:
+                stop = self.bybit.Conditional.Conditional_new(
+                    order_type="Market",
+                    side=side,
+                    symbol=symbol,
+                    qty=amount,
+                    stop_px=stop_px,
+                    base_price=base_price,
+                    time_in_force="GoodTillCancel"
+                ).result()
+                stop = stop[0]['result']
+            except Exception as e:
+                self.logger.error("Stop Failed to be created {}".format(e))
+                stop = None
         self.logger.info("Sending a Create Stop command side =>{} stop =>{}".format(side, stop_px))
-        self.logger.info("Command's result: {}".format(s[0]['result']))
-        return s[0]['result']
-
-
-
-
-
-
-
-
-
+        self.logger.info("Command's result: {}".format(stop))
+        return stop
