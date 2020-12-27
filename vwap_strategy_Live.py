@@ -54,7 +54,6 @@ class VwapStrategy(BybitTools):
                     self.win
                     )
                 )
-                self.logger.info('---------------------------------- End ----------------------------------')
                 if not self.win:
                     self.wait = True
                 self.cancel_all_orders(symbol)
@@ -62,6 +61,7 @@ class VwapStrategy(BybitTools):
                 self.in_a_trade = False
                 self.amount = self.config["OTHER"]["Amount"]
                 self.win = False
+                self.logger.info('---------------------------------- End ----------------------------------')
 
             if position_size != 0 and self.in_a_trade:  # When in Trade, maintaining
                 stop = self.orders[0]
@@ -86,10 +86,14 @@ class VwapStrategy(BybitTools):
                     self.orders.append(self.limit_order(symbol, "Sell", self.amount, vwap))
 
             if self.wait:  # If waiting is needed between trades
+                self.logger.info("Trading has stopped and now in wait time, wait: {}".format(self.wait_time))
                 if last_price < vwap and self.price_above:  # Price just crossed vwap
                     self.wait_time = 0
+                    self.logger.info("Zeroing wait time as price crossed vwap {}".format(self.wait_time))
                 if last_price > vwap and not self.price_above:  # Price just crossed vwap
                     self.wait_time = 0
+                    self.logger.info("Zeroing wait time as price crossed vwap {}".format(self.wait_time))
+
                 self.wait_time += 1
                 if self.wait_time == self.wait_time_limit:
                     self.wait = False
