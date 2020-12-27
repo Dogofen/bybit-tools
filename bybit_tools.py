@@ -62,6 +62,9 @@ class BybitTools(BybitOperations):
     def initiate_trade(self, symbol, quantity, side, targets, stop_px):
         self.logger.info('---------------------------------- New Trade ----------------------------------')
         position = self.true_get_position(symbol)
+        self.logger.info("Current Trade, symbol: {} side: {} size: {}".format(
+            position['symbol'], position['side'], position['size'])
+        )
         position_price = self.get_position_price(position)
         quantity = int(quantity)
         self.orders.append(self.create_stop(symbol, stop_px))
@@ -85,7 +88,8 @@ class BybitTools(BybitOperations):
             self.win = True
             if abs(position_size) == int(self.config['OTHER']['Amount'])/3:
                 last_price = self.get_last_price_close(symbol)
-                if position_size > 0:
+                position_side = self.get_position_side(position)
+                if position_side == 'Sell':
                     stop_price = last_price - self.targets[0] * last_price
                 else:
                     stop_price = last_price + self.targets[0] * last_price

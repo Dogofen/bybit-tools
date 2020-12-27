@@ -179,6 +179,9 @@ class BybitOperations(object):
     def get_position_size(self, position):
         return position['size']
 
+    def get_position_side(self, position):
+        return position['side']
+
     def get_position_price(self, position):
         return float(position['entry_price'])
 

@@ -48,18 +48,13 @@ class VwapStrategy(BybitTools):
             position = self.true_get_position(symbol)
             position_size = self.get_position_size(position)
 
-            # waiting when day passed if no trade
-            if datetime.datetime.now().strftime('%H:%M:%S') == self.get_time_open() and not self.in_a_trade:
-                self.wait = True
-                self.cancel_all_orders(symbol)
-                self.orders = []
-
             if position_size == 0 and self.in_a_trade:  # Finish Operations
                 print("Trade was finished, win: {} cancelling Orders".format(self.win))
                 self.logger.info("Trade was finished, win: {} cancelling Orders".format(
                     self.win
                     )
                 )
+                self.logger.info('---------------------------------- End ----------------------------------')
                 if not self.win:
                     self.wait = True
                 self.cancel_all_orders(symbol)
@@ -75,11 +70,8 @@ class VwapStrategy(BybitTools):
             if position_size != 0 and not self.in_a_trade:  # When limit order just accepted
                 self.in_a_trade = True
                 if len(self.orders) == 1:
-                    order = self.orders.pop()
-                    if position_size < 0:
-                        side = "Sell"
-                    else:
-                        side = "Buy"
+                    self.orders.pop()
+                    side = self.get_position_side(position)
                     self.initiate_trade(symbol, self.amount, side, self.targets, self.stop_px+'%')
 
             if not self.in_a_trade and len(self.orders) == 1:  # Editing Order every tick to fit vwap
@@ -102,10 +94,16 @@ class VwapStrategy(BybitTools):
                 if self.wait_time == self.wait_time_limit:
                     self.wait = False
                     self.wait_time = 0
-            if last_price > vwap:
+            if last_price > vwap:  # This determines if price has crossed vwap
                 self.price_above = True
             else:
                 self.price_above = False
+            # waiting when day passed if no trade
+            if datetime.datetime.now().strftime('%H:%M:%S') == self.get_time_open() and not self.in_a_trade:
+                self.logger.info("Waiting a few minutes at the start of day open")
+                self.wait = True
+                self.cancel_all_orders(symbol)
+                self.orders = []
 
 
 vwap_strategy = VwapStrategy()
