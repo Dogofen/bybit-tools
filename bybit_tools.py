@@ -62,9 +62,12 @@ class BybitTools(BybitOperations):
     def initiate_trade(self, symbol, quantity, side, targets, stop_px):
         self.logger.info('---------------------------------- New Trade ----------------------------------')
         position = self.true_get_position(symbol)
-        self.logger.info("Current Trade, symbol: {} side: {} size: {}".format(
-            position['symbol'], position['side'], position['size'])
-        )
+        self.logger.info("Current Trade, symbol: {} side: {} size: {} price: {}".format(
+            symbol,
+            self.get_position_side(position),
+            self.get_position_size(position),
+            self.get_position_price(position)
+        ))
         position_price = self.get_position_price(position)
         quantity = int(quantity)
         self.orders.append(self.create_stop(symbol, stop_px))
@@ -76,7 +79,7 @@ class BybitTools(BybitOperations):
             if opposite_side == "Sell":
                 t = t * position_price + position_price
             else:
-                t = -t * self.position.price + self.position.price
+                t = -t * position_price + position_price
             self.orders.append(self.limit_order(symbol, opposite_side, quantity/3, int(t)))
 
     def maintain_trade(self, symbol, stop, quantity):
