@@ -90,12 +90,11 @@ class BybitTools(BybitOperations):
         if abs(position_size) != quantity:
             self.win = True
             if abs(position_size) == int(self.config['OTHER']['Amount'])/3:
-                last_price = self.get_last_price_close(symbol)
                 position_side = self.get_position_side(position)
                 if position_side == 'Sell':
-                    stop_price = last_price - self.targets[0] * last_price
+                    stop_price = stop_price - self.targets[0] * stop_price
                 else:
-                    stop_price = last_price + self.targets[0] * last_price
+                    stop_price = stop_price + self.targets[0] * stop_price
             stop_price = str(int(stop_price))
             quantity = abs(position_size)
             self.logger.info("Amending stop as limit was filled, price:{} quantity:{}".format(stop_price, quantity))

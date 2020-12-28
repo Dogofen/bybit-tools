@@ -10,6 +10,7 @@ class BybitOperations(object):
     API_KEY = ''
     API_SECRET = ''
 
+    orders = []
     logger = ''
     bybit = ''
     env = ''
@@ -49,6 +50,9 @@ class BybitOperations(object):
         order_id = order_id['order_id']
         self.logger.info("editing order:{} price:{}.".format(order_id, price))
         self.bybit.Order.Order_replace(symbol=symbol, order_id=order_id, p_r_price=str(price)).result()
+
+    def get_stop_order(self):
+        return self.orders[0]
 
     def get_month(self):
         return datetime.datetime.now().strftime('%m')
@@ -154,6 +158,7 @@ class BybitOperations(object):
             self.logger.error("Failed cancelling Orders {}".format(e))
             return
         self.logger.info("All Orders been cancelled")
+        self.orders = []
         return True
 
     def true_get_position(self, symbol):
