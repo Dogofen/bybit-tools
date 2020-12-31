@@ -76,6 +76,9 @@ class BybitOperations(object):
             self.logger.error("Getting big deal Failed {}".format(e))
         return bd
 
+    def get_cash(self, coin):
+        return self.bybit.Wallet.Wallet_getBalance(coin=coin).result()[0]['result'][coin]['wallet_balance']
+
     def edit_stop(self, symbol, stop_id, p_r_qty, p_r_trigger_price):
         try:
             stop_id = stop_id['stop_order_id']
@@ -146,17 +149,49 @@ class BybitOperations(object):
             self.logger.error("get Kline returned: {} error was: {}".format(kline, e))
         return int(float(kline[0]['close']))
 
+    def true_cancel_stop(self, symbol):
+        fault_counter = 0
+        while len(self.true_get_stop_order(symbol)) != 0:
+            if fault_counter > 5:
+                self.logger.error(
+                    "Cancel stop Failed, fault counter has {} tries".format(fault_counter)
+                )
+            try:
+                self.logger.info(self.bybit.Conditional.Conditional_cancelAll(symbol=symbol).result())
+            except Exception as e:
+                self.logger.error("Cancel Stop returned: {}".format(e))
+                sleep(2)
+            fault_counter += 1
+            sleep(1)
+
+    def true_cancel_orders(self, symbol):
+        fault_counter = 0
+        while len(self.true_get_active_orders(symbol)) != 0:
+            if fault_counter > 5:
+                self.logger.error(
+                    "Cancel stop Failed, fault counter has {} tries".format(fault_counter)
+                )
+            try:
+                self.logger.info(self.bybit.Order.Order_cancelAll(symbol=symbol).result())
+            except Exception as e:
+                self.logger.error("Cancel Stop returned: {}".format(e))
+                sleep(2)
+            fault_counter += 1
+            sleep(1)
+
     def cancel_all_orders(self, symbol):
-        try:
-            self.bybit.Conditional.Conditional_cancelAll(symbol=symbol).result()
-        except Exception as e:
-            self.logger.error("Failed cancelling Orders {}".format(e))
-            return
-        try:
-            self.bybit.Order.Order_cancelAll(symbol=symbol).result()
-        except Exception as e:
-            self.logger.error("Failed cancelling Orders {}".format(e))
-            return
+        if len(self.true_get_stop_order(symbol)) != 0:
+            try:
+                self.true_cancel_stop(symbol)
+            except Exception as e:
+                self.logger.error("Failed cancelling Orders {}".format(e))
+                return
+        if len(self.true_get_active_orders(symbol)) != 0:
+            try:
+                self.true_cancel_orders(symbol)
+            except Exception as e:
+                self.logger.error("Failed cancelling Orders {}".format(e))
+                return
         self.logger.info("All Orders been cancelled")
         self.orders = []
         return True
@@ -180,6 +215,48 @@ class BybitOperations(object):
             fault_counter += 1
             sleep(1)
         return position['result']
+
+    def true_get_active_orders(self, symbol):
+        success = False
+        fault_counter = 0
+        orders = False
+        while success is False:
+            if fault_counter > 5:
+                self.logger.error(
+                    "Get Active Orders Failed to retrieved fault counter has {} tries".format(fault_counter)
+                )
+            try:
+                orders = self.bybit.Order.Order_getOrders(
+                    symbol=symbol, order_status="New"
+                ).result()[0]['result']['data']
+                success = True
+            except Exception as e:
+                self.logger.error("get active orders returned: {} error was: {}".format(orders, e))
+                success = False
+                fault_counter += 1
+                sleep(2)
+        return orders
+
+    def true_get_stop_order(self, symbol):
+        success = False
+        fault_counter = 0
+        stop_order = False
+        while success is False:
+            if fault_counter > 5:
+                self.logger.error(
+                    "Get Active Orders Failed to retrieved fault counter has {} tries".format(fault_counter)
+                )
+            try:
+                stop_order = self.bybit.Conditional.Conditional_getOrders(
+                    symbol=symbol, stop_order_status="Untriggered"
+                ).result()[0]['result']['data']
+                success = True
+            except Exception as e:
+                self.logger.error("get active orders returned: {} error was: {}".format(stop_order, e))
+                success = False
+                fault_counter += 1
+                sleep(2)
+        return stop_order
 
     def get_position_size(self, position):
         return position['size']

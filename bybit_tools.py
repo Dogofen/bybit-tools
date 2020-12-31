@@ -13,11 +13,16 @@ class BybitTools(BybitOperations):
     win = False
     last_big_deal = ''
     orders = []
+    live = False
 
     def __init__(self):
         super(BybitTools, self).__init__()
         self.config = configparser.ConfigParser()
         self.config.read('conf.ini')
+        if "--Test" in sys.argv:
+            self.live = False
+        else:
+            self.live = True
 
         bot_logger = Logger()
         self.logger = bot_logger.init_logger()
@@ -82,7 +87,7 @@ class BybitTools(BybitOperations):
                 t = -t * position_price + position_price
             self.orders.append(self.limit_order(symbol, opposite_side, quantity/3, int(t)))
 
-    def maintain_trade(self, symbol, stop, quantity):
+    def maintain_trade(self, symbol, stop, targets, quantity):
         quantity = int(quantity)
         position = self.true_get_position(symbol)
         position_size = self.get_position_size(position)
@@ -92,9 +97,9 @@ class BybitTools(BybitOperations):
             if abs(position_size) == int(self.config['OTHER']['Amount'])/3:
                 position_side = self.get_position_side(position)
                 if position_side == 'Sell':
-                    stop_price = stop_price - self.targets[0] * stop_price
+                    stop_price = stop_price - targets[0] * stop_price
                 else:
-                    stop_price = stop_price + self.targets[0] * stop_price
+                    stop_price = stop_price + targets[0] * stop_price
             stop_price = str(int(stop_price))
             quantity = abs(position_size)
             self.logger.info("Amending stop as limit was filled, price:{} quantity:{}".format(stop_price, quantity))

@@ -2,11 +2,12 @@ from botlogger import Logger
 import datetime
 from time import sleep
 from bybit_tools import BybitTools
-import configparser
-import sys
 
 
 class VwapStrategy(BybitTools):
+    symbol = "BTCUSD"
+    coin = "BTC"
+    cash = False
     old_position = False
     last_big_deal = False
     new_big_deal = False
@@ -23,8 +24,7 @@ class VwapStrategy(BybitTools):
     last_vwap = False
 
     def __init__(self):
-        self.config = configparser.ConfigParser()
-        self.config.read('conf.ini')
+        super(VwapStrategy, self).__init__()
         self.targets = [
             float(self.config["Vwap"]["Target0"]),
             float(self.config["Vwap"]["Target1"]),
@@ -33,34 +33,15 @@ class VwapStrategy(BybitTools):
         self.stop_px = self.config["Vwap"]["StopPx"]
         self.wait_time_limit = int(self.config["Vwap"]["WaitTimeLimit"])
         self.amount = self.config["OTHER"]["Amount"]
-        if "--Test" in sys.argv:
-            self.live = False
-        else:
-            self.live = True
-        super(VwapStrategy, self).__init__()
+        self.draw_back_percentage = float(self.config["OTHER"]["DrawBack"])
+        self.cash = self.get_cash(self.coin)
+        self.draw_back = self.cash - self.cash * self.draw_back_percentage
+        self.logger.info("Initial cash: {} max draw back: {}, {}".format(
+            self.cash, self.draw_back_percentage, self.draw_back)
+        )
         bot_logger = Logger()
         self.logger = bot_logger.init_logger()
         self.logger.info('Applying Vwap Strategy')
-
-    def _finish_operations_for_trade(self, symbol):
-        print("Trade was finished, win: {} {}".format(
-            self.win,
-            self.get_date())
-        )
-        self.logger.info("Trade was finished, win: {} {}".format(
-            self.win,
-            self.get_date())
-        )
-        if not self.win:
-            self._wait = True
-        for order in self.orders:
-            self.cancel(order)
-        while len(self.orders) != 0:
-            self.orders.pop()
-        self.in_a_trade = False
-        self.amount = self.config["OTHER"]["Amount"]
-        self.win = False
-        self.logger.info('---------------------------------- End ----------------------------------')
 
     def finish_operations_for_trade(self, symbol):
         print("Trade finished, win: {} time:{}".format(self.win, self.get_date()))
@@ -73,11 +54,19 @@ class VwapStrategy(BybitTools):
         self.in_a_trade = False
         self.amount = self.config["OTHER"]["Amount"]
         self.win = False
+        self.logger.info('Remaining open orders: {} stop orders: {}'.format(
+            self.true_get_active_orders(symbol), self.true_get_stop_order(symbol)))
         self.logger.info('---------------------------------- End ----------------------------------')
+        cash = self.get_cash(self.coin)
+        if cash < self.draw_back:  # quit if bot lose too much
+            self.logger.error(
+                "Asset: {} has passed the max draw back defined: {} thus stopping.".format(cash, self.draw_back)
+            )
+            quit()
 
     def in_trade_operations(self, symbol):
         stop = self.get_stop_order()
-        self.amount = self.maintain_trade(symbol, stop, self.amount)
+        self.amount = self.maintain_trade(symbol, stop, self.targets, self.amount)
 
     def start_trade(self, symbol, position):
         print("Trade started time:{}".format(self.get_date()))
@@ -143,16 +132,16 @@ class VwapStrategy(BybitTools):
             self.price_above = False
 
     def next(self):
-        symbol = "BTCUSD"
-        vwap = self.get_vwap(symbol)
-        last_price = self.get_last_price_close(symbol)
-        position = self.true_get_position(symbol)
-        self.strategy_run(symbol, position, last_price, vwap)
+        vwap = self.get_vwap(self.symbol)
+        last_price = self.get_last_price_close(self.symbol)
+        position = self.true_get_position(self.symbol)
+        self.strategy_run(self.symbol, position, last_price, vwap)
+
         while self.live:
             if datetime.datetime.now().second % 10 != 0:
                 sleep(1)
                 continue
-            vwap = self.get_vwap(symbol)
-            last_price = self.get_last_price_close(symbol)
-            position = self.true_get_position(symbol)
-            self.strategy_run(symbol, position, last_price, vwap)
+            vwap = self.get_vwap(self.symbol)
+            last_price = self.get_last_price_close(self.symbol)
+            position = self.true_get_position(self.symbol)
+            self.strategy_run(self.symbol, position, last_price, vwap)
